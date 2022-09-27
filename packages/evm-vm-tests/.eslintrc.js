@@ -7,7 +7,7 @@ module.exports = {
   },
   overrides: [
     {
-      files: ['tests/*.ts'],
+      files: ['tests/**/*.ts'],
       rules: {
         'no-console': 'off',
       },
