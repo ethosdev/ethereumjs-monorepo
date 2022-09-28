@@ -5,7 +5,7 @@ import { RLP } from '@ethereumjs/rlp'
 import { Trie } from '@ethereumjs/trie'
 import { TransactionFactory } from '@ethereumjs/tx'
 import { bufferToBigInt, isHexPrefixed, stripHexPrefix, toBuffer } from '@ethereumjs/util'
-import { EEI, VM as VM_DIST, VmState } from '@ethereumjs/vm'
+import { VM as VM_DIST, VmState } from '@ethereumjs/vm'
 import { VM as VM_SRC } from '@ethereumjs/vm/src'
 import { Level } from 'level'
 import { MemoryLevel } from 'memory-level'
@@ -80,18 +80,20 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
   }
 
   const begin = Date.now()
-
   const vm = await VM.create({
-    state,
     blockchain,
     common,
     hardforkByBlockNumber: true,
   })
+  const vmState = new VmState({ common, stateManager: vm.stateManager })
 
   // set up pre-state
-  await setupPreConditions(vm.eei, testData)
+  await setupPreConditions(vmState, testData)
 
-  t.ok(vm.stateManager._trie.root().equals(genesisBlock.header.stateRoot), 'correct pre stateRoot')
+  t.ok(
+    (await vm.stateManager.getStateRoot()).equals(genesisBlock.header.stateRoot),
+    'correct pre stateRoot'
+  )
 
   async function handleError(error: string | undefined, expectException: string | boolean) {
     if (expectException !== false) {
@@ -140,7 +142,7 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
       // transactionSequence is provided when txs are expected to be rejected.
       // To run this field we try to import them on the current state.
       if (raw.transactionSequence !== undefined) {
-        const parentBlock = await vm.blockchain.getIteratorHead()
+        const parentBlock = await vm.blockchain.getIteratorHead!()
         const blockBuilder = await vm.buildBlock({
           parentBlock,
           blockOpts: { calcDifficultyFromHeader: parentBlock.header },
@@ -176,10 +178,10 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
       // state. Generating the genesis state is not needed because
       // blockchain tests come with their own `pre` world state.
       // TODO: Add option to `runBlockchain` not to generate genesis state.
-      vm._common.genesis().stateRoot = vm.stateManager._trie.root()
+      // vm._common.genesis().stateRoot = vm.stateManager._trie.root()
       try {
         await blockchain.iterator('vm', async (block: Block) => {
-          const parentBlock = await blockchain!.getBlock(block.header.parentHash)
+          const parentBlock = await blockchain.getBlock(block.header.parentHash)
           const parentState = parentBlock.header.stateRoot
           // run block, update head if valid
           try {
@@ -187,7 +189,7 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
             // set as new head block
           } catch (error: any) {
             // remove invalid block
-            await blockchain!.delBlock(block.header.hash())
+            await blockchain.delBlock(block.header.hash())
             throw error
           }
         })
@@ -199,8 +201,8 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
         // testData.postState to the actual postState, rather than to the preState.
         if (options.debug !== true) {
           // make sure the state is set before checking post conditions
-          const headBlock = await vm.blockchain.getIteratorHead()
-          vm.stateManager._trie.root(headBlock.header.stateRoot)
+          const headBlock = await vm.blockchain.getIteratorHead!()
+          await vm.stateManager.setStateRoot(headBlock.header.stateRoot)
         } else {
           await verifyPostConditions(state, testData.postState, t)
         }

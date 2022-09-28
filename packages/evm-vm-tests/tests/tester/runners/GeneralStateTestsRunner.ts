@@ -86,9 +86,10 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
   })
   const eei = new EEI(stateManager, common, blockchain)
   const evm = new EVM({ common, eei })
-  const vm = await VM.create({ state, stateManager, common, blockchain, evm })
+  const vm = await VM.create({ stateManager, common, blockchain, evm })
+  const vmState = new VmState({ common, stateManager: vm.stateManager })
 
-  await setupPreConditions(vm.eei, testData)
+  await setupPreConditions(vmState, testData)
 
   let execInfo = ''
   let tx
@@ -104,7 +105,7 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
       const block = makeBlockFromEnv(testData.env, { common })
 
       if (options.jsontrace === true) {
-        vm.evm.events.on('step', function (e: InterpreterStep) {
+        vm.evm.events!.on('step', function (e: InterpreterStep) {
           let hexStack = []
           hexStack = e.stack.map((item: bigint) => {
             return '0x' + item.toString(16)
@@ -124,7 +125,7 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
         })
         vm.events.on('afterTx', async () => {
           const stateRoot = {
-            stateRoot: vm.stateManager._trie.root.toString('hex'),
+            stateRoot: (await vm.stateManager.getStateRoot()).toString('hex'),
           }
           t.comment(JSON.stringify(stateRoot))
         })
@@ -140,7 +141,7 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
     }
   }
 
-  const stateManagerStateRoot = vm.stateManager._trie.root()
+  const stateManagerStateRoot = await vm.stateManager.getStateRoot()
   const testDataPostStateRoot = toBuffer(testData.postStateRoot)
   const stateRootsAreEqual = stateManagerStateRoot.equals(testDataPostStateRoot)
 
