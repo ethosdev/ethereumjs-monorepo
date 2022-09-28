@@ -4,7 +4,7 @@ import { EVM } from '@ethereumjs/evm'
 import { DefaultStateManager } from '@ethereumjs/statemanager'
 import { Trie } from '@ethereumjs/trie'
 import { toBuffer } from '@ethereumjs/util'
-import { EEI, VM as VM_DIST, VmState } from '@ethereumjs/vm'
+import { EEI, VM as VM_DIST } from '@ethereumjs/vm'
 import { VM as VM_SRC } from '@ethereumjs/vm/src'
 
 import { makeBlockFromEnv, makeTx, setupPreConditions } from '../../util'
@@ -87,9 +87,8 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
   const eei = new EEI(stateManager, common, blockchain)
   const evm = new EVM({ common, eei })
   const vm = await VM.create({ stateManager, common, blockchain, evm })
-  const vmState = new VmState({ common, stateManager: vm.stateManager })
 
-  await setupPreConditions(vmState, testData)
+  await setupPreConditions(eei, testData)
 
   let execInfo = ''
   let tx
@@ -105,7 +104,7 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
       const block = makeBlockFromEnv(testData.env, { common })
 
       if (options.jsontrace === true) {
-        vm.evm.events!.on('step', function (e: InterpreterStep) {
+        evm.events!.on('step', function (e: InterpreterStep) {
           let hexStack = []
           hexStack = e.stack.map((item: bigint) => {
             return '0x' + item.toString(16)
@@ -125,7 +124,7 @@ async function runTestCase(options: any, testData: any, t: tape.Test) {
         })
         vm.events.on('afterTx', async () => {
           const stateRoot = {
-            stateRoot: (await vm.stateManager.getStateRoot()).toString('hex'),
+            stateRoot: (await evm.eei.getStateRoot()).toString('hex'),
           }
           t.comment(JSON.stringify(stateRoot))
         })
