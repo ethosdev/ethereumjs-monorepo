@@ -1,1 +1,1 @@
-export const tests = 'tests'
+export * from './util'
