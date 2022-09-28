@@ -5,6 +5,8 @@ import { RLP } from '@ethereumjs/rlp'
 import { Trie } from '@ethereumjs/trie'
 import { TransactionFactory } from '@ethereumjs/tx'
 import { bufferToBigInt, isHexPrefixed, stripHexPrefix, toBuffer } from '@ethereumjs/util'
+import { EEI, VM as VM_DIST, VmState } from '@ethereumjs/vm'
+import { VM as VM_SRC } from '@ethereumjs/vm/src'
 import { Level } from 'level'
 import { MemoryLevel } from 'memory-level'
 
@@ -72,9 +74,9 @@ export async function runBlockchainTest(options: any, testData: any, t: tape.Tes
 
   let VM
   if (options.dist === true) {
-    ;({ VM } = require('../../../dist'))
+    VM = VM_DIST
   } else {
-    ;({ VM } = require('../../../src'))
+    VM = VM_SRC
   }
 
   const begin = Date.now()

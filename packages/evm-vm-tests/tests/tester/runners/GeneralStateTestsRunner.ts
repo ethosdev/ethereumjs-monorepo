@@ -4,7 +4,8 @@ import { EVM } from '@ethereumjs/evm'
 import { DefaultStateManager } from '@ethereumjs/statemanager'
 import { Trie } from '@ethereumjs/trie'
 import { toBuffer } from '@ethereumjs/util'
-import { EEI } from '@ethereumjs/vm'
+import { EEI, VM as VM_DIST, VmState } from '@ethereumjs/vm'
+import { VM as VM_SRC } from '@ethereumjs/vm/src'
 
 import { makeBlockFromEnv, makeTx, setupPreConditions } from '../../util'
 
@@ -68,9 +69,9 @@ function parseTestCases(
 async function runTestCase(options: any, testData: any, t: tape.Test) {
   let VM
   if (options.dist === true) {
-    ;({ VM } = require('../../../dist'))
+    VM = VM_DIST
   } else {
-    ;({ VM } = require('../../../src'))
+    VM = VM_SRC
   }
   const begin = Date.now()
   const common = options.common
